@@ -11,13 +11,28 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEIGHTS="$ROOT/weights"
 mkdir -p "$WEIGHTS/paragraph_ldm" "$WEIGHTS/hwd" "$WEIGHTS/diffink"
 
+# macOS ships only `python3` (no `python` alias) by default; pick whichever
+# interpreter is actually on PATH.
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+else
+  echo "!! Neither 'python' nor 'python3' found on PATH. Install Python 3 first."
+  exit 1
+fi
+if ! "$PY" -c "import gdown" >/dev/null 2>&1; then
+  echo ">> Installing gdown ($PY -m pip install --user gdown)..."
+  "$PY" -m pip install --user gdown
+fi
+
 # ---------------------------------------------------------------- Paragraph-LDM
 # Official pre-trained checkpoint from the paper authors (README of
 # github.com/M4rt1nM4yr/paragraph_handwriting_imitation_ldm):
 GDRIVE_ID="1Wu2hh69GN0ib4sZiXkNIIfZRUdZTNSyx"
 if [ ! -f "$WEIGHTS/paragraph_ldm/ldm.ckpt" ]; then
   echo ">> Downloading Paragraph-LDM pre-trained checkpoint (~GBs, Google Drive)..."
-  python -m gdown "$GDRIVE_ID" -O "$WEIGHTS/paragraph_ldm/ldm.ckpt" || {
+  "$PY" -m gdown "$GDRIVE_ID" -O "$WEIGHTS/paragraph_ldm/ldm.ckpt" || {
     echo "!! gdown failed (Drive quota / network). Download manually:"
     echo "   https://drive.google.com/file/d/$GDRIVE_ID/view"
     echo "   and place it at $WEIGHTS/paragraph_ldm/ldm.ckpt"
@@ -43,7 +58,7 @@ OFFICIAL="$WEIGHTS/diffink/official"
 mkdir -p "$OFFICIAL"
 if [ ! -f "$OFFICIAL/dit.pt" ]; then
   echo ">> Downloading official DiffInk release (Google Drive folder)..."
-  python -m gdown --folder "$DIFFINK_FOLDER_ID" -O "$OFFICIAL/_download" --remaining-ok || {
+  "$PY" -m gdown --folder "$DIFFINK_FOLDER_ID" -O "$OFFICIAL/_download" --remaining-ok || {
     echo "!! gdown folder download failed. Download manually from the link above"
     echo "   (or Baidu: https://pan.baidu.com/s/1NhEoO_hIDOn2dC4qN1oe1A?pwd=ddra)"
   }
