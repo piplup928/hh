@@ -238,9 +238,9 @@ class HTR_Writer(pl.LightningModule):
         pred_logits = (torch.ones(size=(x.shape[0], max_char_len)) * self.alphabet.toPosition[PAD]).long()
         pred = torch.ones(size=(x.shape[0], max_char_len, len(self.alphabet.toPosition)))
         pred_logits[:, 0] = (torch.ones(size=pred_logits[:, 0].shape) * self.alphabet.toPosition[START_OF_SEQUENCE]).long()
-        if x.is_cuda:
-            pred_logits = pred_logits.cuda()
-            pred = pred.cuda()
+        # PLATFORM PATCH: follow the input's device (cuda/mps/cpu)
+        pred_logits = pred_logits.to(x.device)
+        pred = pred.to(x.device)
 
 
         for i in range(1, max_char_len):

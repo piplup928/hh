@@ -1,4 +1,6 @@
-import type { BenchmarkReport, InkPayload, Marks, StyleProfile } from './types';
+import type {
+  BenchmarkReport, DocumentPayload, DocumentSummary, InkPayload, Marks, StyleProfile,
+} from './types';
 
 const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
 
@@ -39,6 +41,17 @@ export const api = {
       body: JSON.stringify({ styleId, maxSamples }),
     }),
   listReports: () => jfetch<BenchmarkReport[]>('/api/benchmarks/reports'),
+
+  saveDocument: (doc: DocumentPayload) =>
+    jfetch<{ docId: string; updatedAt: number }>('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(doc),
+    }),
+  listDocuments: () => jfetch<DocumentSummary[]>('/api/documents'),
+  getDocument: (id: string) => jfetch<DocumentPayload>(`/api/documents/${id}`),
+  deleteDocument: (id: string) =>
+    jfetch(`/api/documents/${id}`, { method: 'DELETE' }),
 };
 
 // ------------------------------------------------------------------ WebSocket

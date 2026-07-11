@@ -22,9 +22,11 @@ class DDIMSampler(object):
         self.schedule = schedule
 
     def register_buffer(self, name, attr):
+        # PLATFORM PATCH: device-agnostic (cuda/mps/cpu) instead of hardcoded cuda
         if type(attr) == torch.Tensor:
-            if attr.device != torch.device("cuda"):
-                attr = attr.to(torch.device("cuda"))
+            model_device = next(self.model.parameters()).device
+            if attr.device != model_device:
+                attr = attr.to(model_device)
         setattr(self, name, attr)
 
     def make_schedule(self, ddim_num_steps, ddim_discretize="uniform", ddim_eta=0., verbose=True):

@@ -116,3 +116,9 @@ table.bench .dir { color: #8888aa; font-size: 10px; }
   .page { box-shadow: none; }
   body { background: white; }
 }
+
+/* documents panel */
+.doc-title { width: 100%; padding: 6px; border-radius: 6px; border: none; margin-bottom: 6px; }
+.doc-actions { display: flex; gap: 6px; margin-bottom: 6px; }
+.doc-actions button { flex: 1; padding: 6px; border: none; border-radius: 6px; cursor: pointer; background: #44446b; color: #e8e8f0; }
+.doc-actions button.primary { background: #6c63ff; font-weight: 600; }

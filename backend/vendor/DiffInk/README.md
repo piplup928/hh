@@ -1,0 +1,85 @@
+<h1 align="center">
+  DiffInk: Glyph- and Style-Aware Latent Diffusion Transformer  
+  for Text to Online Handwriting Generation
+</h1>
+
+## Updates
+- [2026/6/19] DiffMath is now on [arXiv](https://arxiv.org/abs/2606.19939), focusing on structured content generation.
+- [2026/3/21] Code and pretrained weights are released.
+- [2026/1/29] DiffInk is accepted by ICLR 2026 🎉🎉🎉.
+- [2025/10/1] The DiffInk paper can be found at [arXiv](https://www.arxiv.org/pdf/2509.23624).
+
+
+## Overview of TOHG
+<div align="justify">
+
+Text-to-Online Handwriting Generation (TOHG) refers to the task of synthesizing realistic pen trajectories $(G_i)$ conditioned on textual content $(T)$ and style reference $(S_i)$.
+
+</div>
+
+<div align="center">
+  <img src="/imgs/TOHG_overview.png" alt="Overview of TOHG" width="70%">
+</div>
+
+## DiffInk vs. Character–Layout Decoupled Approaches
+<div align="justify">
+
+(a) A two-stage pipeline combining handwritten font generation with layout post-processing; (b) **DiffInk (Ours)**, which takes text and a style reference to directly output complete text lines. Unlike the two-stage pipeline, DiffInk generates more natural character connections rather than mechanically stitching bounding boxes.
+
+</div>
+
+<div align="center">
+  <img src="/imgs/methods_compare.png" alt="Overview of TOHG" width="70%">
+</div>
+
+
+## Usage
+
+### Install
+
+- Create environment:: `conda create -n diffink python=3.8 -y`
+- Install dependencies: `conda activate diffink && pip install -r requirements.txt`
+
+### Data and Pretrained Weights
+
+Download the dataset and pretrained weights from [Google Drive](https://drive.google.com/drive/folders/1h_uLmn-55WmbSBGh1ES8-rftAbDs8riB?usp=drive_link) or [Baidu Cloud](https://pan.baidu.com/s/1NhEoO_hIDOn2dC4qN1oe1A?pwd=ddra).
+
+### Training
+
+- Train the **InkVAE** model with: `bash scripts/train_vae_ddp.sh`
+
+- Then, train the **InkDiT** model with: `bash scripts/train_dit_ddp.sh`
+
+- Finally, fine-tune the model on real data with: `bash scripts/tune_dit_ddp.sh`
+
+### Inference
+
+Run inference with: `CUDA_VISIBLE_DEVICES=0 python val_dit.py`
+
+<!-- ## Copyright
+
+This repository is provided for non-commercial research purposes only; for commercial use, please contact Prof. Lianwen Jin (eelwjin@scut.edu.cn).
+
+For any issues encountered during use, please open an issue or contact Wei Pan (eewpan@mail.scut.edu.cn). -->
+
+## Acknowledgements
+- [ConvNeXt-V2](https://arxiv.org/abs/2301.00808), [DiT](https://arxiv.org/abs/2212.09748), [F5-TTS](https://arxiv.org/abs/2410.06885), [WriteLikeU](https://onlinelibrary.wiley.com/doi/epdf/10.1111/cgf.142621), and [OLHWG](https://arxiv.org/abs/2410.02309) provide valuable inspiration for this work.
+
+- [CASIA-OLHWDB](https://nlpr.ia.ac.cn/databases/handwriting/home.html) and [IAM-OnDB](https://fki.tic.heia-fr.ch/databases/iam-on-line-handwriting-database) datasets are valuable resources for this work.
+
+## Citation
+If you find this work useful or use this code in your research, please consider citing the following paper.
+
+```bibtex
+@inproceedings{pan2026diffink,
+  title={DiffInk: Glyph- and Style-Aware Latent Diffusion Transformer for Text to Online Handwriting Generation},
+  author={Wei Pan and Huiguo He and Hiuyi Cheng and Yilin Shi and Lianwen Jin},
+  booktitle={The Fourteenth International Conference on Learning Representations},
+  year={2026},
+  url={https://openreview.net/forum?id=XKOEQFKFdL}
+}
+```
+
+## License
+
+Our code is released under the MIT License. The pretrained weights, which are trained using part of the CASIA-OLHWDB dataset, follow the [original license](https://nlpr.ia.ac.cn/databases/handwriting/Application_form.html) of the dataset.

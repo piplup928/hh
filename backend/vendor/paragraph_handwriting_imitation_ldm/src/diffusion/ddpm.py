@@ -608,7 +608,10 @@ class LatentDiffusion(DDPM):
         model = instantiate_from_config(config)#AutoencoderKL(embed_dim=pa.embedded_dim,ckpt_path=ckpt_path)#,ckpt_htrw=ckpt_htrw)
 
         self.first_stage_model = model.eval()
-        self.first_stage_model.cuda()
+        # PLATFORM PATCH: device placement is handled by the caller via
+        # model.to(device); hardcoded .cuda() breaks cpu/mps machines.
+        if torch.cuda.is_available():
+            self.first_stage_model.cuda()
         self.first_stage_model.train = disabled_train
 
         for param in self.first_stage_model.parameters():

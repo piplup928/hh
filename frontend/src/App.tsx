@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react';
 import { HandwritingEditor } from './editor/HandwritingEditor';
 import { Toolbar } from './components/Toolbar';
 import { BenchmarkPanel, PaperPanel, StylePanel, TypographyPanel } from './components/Panels';
+import { DocumentsPanel } from './components/DocumentsPanel';
 import { DEFAULT_PAPER } from './paper';
 import type { PaperSettings, Typography } from './types';
 import './styles.css';
@@ -24,6 +25,14 @@ export default function App() {
       <aside className="sidebar">
         <h2>✍ Handwriting AI</h2>
         <StylePanel styleId={styleId} setStyleId={setStyleId} />
+        <DocumentsPanel
+          editor={editor} styleId={styleId} paper={paper} typo={typo}
+          applyLoaded={({ paper: p, typography: t, styleId: s }) => {
+            if (p && Object.keys(p).length) setPaper((prev) => ({ ...prev, ...p }));
+            if (t && Object.keys(t).length) setTypo((prev) => ({ ...prev, ...t }));
+            if (s) setStyleId(s);
+          }}
+        />
         <PaperPanel paper={paper} setPaper={setPaper} />
         <TypographyPanel typo={typo} setTypo={setTypo} />
         <BenchmarkPanel styleId={styleId} />

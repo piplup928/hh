@@ -191,8 +191,20 @@ class ParagraphLDMEngine:
         return c, pred_logits.long()
 
     # ---------------------------------------------------------------- sampling
+    _SAFE_DDIM_STEPS = (2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 125, 200, 250, 500)
+
+    @classmethod
+    def _safe_steps(cls, steps: int) -> int:
+        """The vendored CompVis DDIM scheduler indexes out of range when the
+        step count doesn't divide the 1000 DDPM timesteps; snap to the nearest
+        divisor."""
+        if 1000 % max(steps, 1) == 0:
+            return steps
+        return min(cls._SAFE_DDIM_STEPS, key=lambda s: abs(s - steps))
+
     def _sample_page(self, text: str, style_img: Image.Image, steps: int,
                      guidance: float, seed: Optional[int]) -> Image.Image:
+        steps = self._safe_steps(steps)
         import torch
 
         self._ensure_model()

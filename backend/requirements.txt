@@ -24,6 +24,11 @@ scikit-image>=0.22
 transformers>=4.38
 kornia>=0.7
 
+# Official DiffInk vendor deps (backend/vendor/DiffInk)
+x-transformers>=1.30
+pyyaml>=6.0
+h5py>=3.10          # only needed to fine-tune on their datasets
+
 # --- Benchmarks (official HWD package is installed from backend/vendor/HWD) ---
 # pip install -e backend/vendor/HWD
 jiwer>=3.0

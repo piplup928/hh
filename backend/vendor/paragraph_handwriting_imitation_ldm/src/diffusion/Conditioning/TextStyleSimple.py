@@ -42,9 +42,18 @@ class TextStyleSimple(nn.Module): #CROSS-ATTENTION MODULE
         self.pe1d = PositionalEncoding1D(d_model=channels)
 
         #Writer Processing
-        self.writer = WriterSequence.load_from_checkpoint(ckpt_seq_w, num_writers=num_writers,ch_mult=cond_ch_mult,
-                                                          hidden_size=hidden_size)
-        self.writer.cuda()
+        # PLATFORM PATCH: when no sub-checkpoint path is configured (inference
+        # from the full ldm.ckpt, whose state_dict already contains these
+        # weights) construct the module fresh; and don't force cuda — device
+        # placement is handled by the caller's model.to(device).
+        if ckpt_seq_w:
+            self.writer = WriterSequence.load_from_checkpoint(ckpt_seq_w, num_writers=num_writers,ch_mult=cond_ch_mult,
+                                                              hidden_size=hidden_size)
+        else:
+            self.writer = WriterSequence(num_writers=num_writers, ch_mult=cond_ch_mult,
+                                         hidden_size=hidden_size)
+        if torch.cuda.is_available():
+            self.writer.cuda()
 
         self.hidden_to_c = torch.nn.Conv2d(in_channels=hidden_size,
                                            out_channels=channels,

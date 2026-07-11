@@ -324,9 +324,11 @@ class PositionalEncoding1D(nn.Module):
         self.d_model = d_model
 
         # Compute the positional encodings once in log space.
-        pe = torch.zeros(max_len, d_model, device='cuda')
-        position = torch.arange(0, max_len,device='cuda').unsqueeze(1) * positional_scaler
-        div_term = torch.exp(torch.arange(0, d_model, 2,device='cuda') *
+        # PLATFORM PATCH: build on CPU; registered as a buffer, it follows
+        # model.to(device) (hardcoded cuda broke cpu/mps machines).
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1) * positional_scaler
+        div_term = torch.exp(torch.arange(0, d_model, 2) *
                              -(math.log(10000.0) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -350,10 +352,8 @@ class A2DPE(nn.Module):
         self.P = PositionalEncoding1D(d_model=d_model, dropout=dropout, positional_scaler=positional_scaler).pe.squeeze()
 
     def forward(self, x):
-        if x.is_cuda:
-            self.P = self.P.cuda()
-        else:
-            self.P = self.P.cpu()
+        # PLATFORM PATCH: follow the input's device (cuda/mps/cpu)
+        self.P = self.P.to(x.device)
         pe = torch.stack([self.P]*x.shape[0])
         alpha, beta = self.alpha_fc(x), self.beta_fc(x)
         Ph = alpha*pe[:,:x.shape[-2]]

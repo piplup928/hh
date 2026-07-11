@@ -63,6 +63,23 @@ export interface Typography {
   pagePadding: number;     // px extra inside margins
 }
 
+export interface DocumentPayload {
+  docId?: string | null;
+  title: string;
+  content: Record<string, unknown>;   // TipTap JSON
+  paper: Partial<PaperSettings>;
+  typography: Partial<Typography>;
+  styleId?: string | null;
+  updatedAt?: number;
+}
+
+export interface DocumentSummary {
+  docId: string;
+  title?: string;
+  updatedAt?: number;
+  styleId?: string | null;
+}
+
 export interface BenchmarkReport {
   runId: string;
   styleId: string;

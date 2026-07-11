@@ -16,7 +16,13 @@ def count_params(model, verbose=False):
 #TODO is this name problematic? It would break a lot...
 def get_yaml(application,filename,project_name="mt_handwriting-diffusion",config_directory="configs"):
     mypath = os.getcwd()
-    path = mypath[:mypath.find(project_name) + len(project_name)]
+    # PLATFORM PATCH: the original code assumed the repo lived in a directory
+    # named `mt_handwriting-diffusion`; fall back to the current working
+    # directory (the vendored repo root) when that name is absent.
+    if project_name in mypath:
+        path = mypath[:mypath.find(project_name) + len(project_name)]
+    else:
+        path = mypath
     return os.path.join(path, config_directory,application,filename)
 
 def instantiate_completely(application,filename,**kwargs):

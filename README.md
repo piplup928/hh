@@ -28,8 +28,15 @@ handwritten ink in **your** style, generated live by diffusion models.
 
 | Content | Model | Source |
 |---|---|---|
-| Prose, paragraphs, words | **Paragraph-LDM** — *Zero-Shot Paragraph-level Handwriting Imitation with Latent Diffusion Models* ([arXiv:2409.00786](https://arxiv.org/abs/2409.00786)) | vendored official repo → `backend/vendor/paragraph_handwriting_imitation_ldm` |
-| Numbers, equations, fractions, integrals, Greek symbols, chemistry, scientific notation, math punctuation | **DiffInk** — *Glyph- and Style-Aware Latent Diffusion Transformer for Text to Online Handwriting Generation* ([arXiv:2509.23624](https://arxiv.org/abs/2509.23624)) | faithful implementation (InkVAE + InkDiT) → `backend/app/engine/diffink` (no official code release exists) |
+| Prose, paragraphs, words | **Paragraph-LDM** — *Zero-Shot Paragraph-level Handwriting Imitation with Latent Diffusion Models* ([arXiv:2409.00786](https://arxiv.org/abs/2409.00786)) | vendored official repo → `backend/vendor/paragraph_handwriting_imitation_ldm` (device-agnostic platform patches for cpu/mps) |
+| Numbers, equations, fractions, integrals, Greek symbols, chemistry, scientific notation, math punctuation | **DiffInk** — *Glyph- and Style-Aware Latent Diffusion Transformer for Text to Online Handwriting Generation* (ICLR 2026, [arXiv:2509.23624](https://arxiv.org/abs/2509.23624)) | **official release vendored** → `backend/vendor/DiffInk` ([awei669/DiffInk](https://github.com/awei669/DiffInk)) with adapter `app/engine/diffink/official.py`; plus a scratch trainable implementation → `app/engine/diffink` |
+
+DiffInk inference modes: with an **online** reference trajectory (tablet
+recording, `online_reference.json` in the style dir) the adapter uses the
+paper's true prefix-conditioning; with image-only uploads it generates
+text-conditioned ink and applies the user's analyzed pen model (stroke width,
+slant, pressure, darkness). The released weights are CASIA/IAM-OnDB-trained —
+extend symbol coverage by fine-tuning with the vendored tune scripts.
 
 Both models are conditioned zero-shot on the user's uploaded style: the LDM's
 style encoder consumes the raw 768×768 style canvas directly; DiffInk is
@@ -111,16 +118,25 @@ npm run dev                              # http://localhost:5173
   the editor stays usable via a clearly-labelled font preview. Preview output
   is tagged `engine: "preview"` everywhere and is rejected by benchmarks.
 
-### Model weights
-* **Paragraph-LDM**: pre-trained checkpoint from the authors
-  ([Google Drive link in their README](https://github.com/M4rt1nM4yr/paragraph_handwriting_imitation_ldm))
-  → `backend/weights/paragraph_ldm/ldm.ckpt` (setup script does this).
-* **DiffInk**: no public checkpoint exists; train the bundled implementation on
-  [MathWriting](https://arxiv.org/abs/2404.10690) or CROHME:
-  ```bash
-  python -m app.engine.diffink.train --stage vae --data /path/to/mathwriting
-  python -m app.engine.diffink.train --stage dit --data /path/to/mathwriting
-  ```
+### Model weights (both official releases, fetched by `scripts/setup_models.sh`)
+* **Paragraph-LDM**: authors' pre-trained checkpoint
+  ([Google Drive, from their README](https://github.com/M4rt1nM4yr/paragraph_handwriting_imitation_ldm))
+  → `backend/weights/paragraph_ldm/ldm.ckpt` (~3.2 GB).
+* **DiffInk**: authors' official pretrained release
+  ([Google Drive folder, from their README](https://github.com/awei669/DiffInk))
+  → `backend/weights/diffink/official/{vae.pt, dit.pt, All_zi.json}`.
+* Optional: train the bundled scratch DiffInk implementation on
+  [MathWriting](https://arxiv.org/abs/2404.10690)/CROHME for wider math
+  coverage: `python -m app.engine.diffink.train --stage vae|dit --data ...`
+
+### Apple Silicon (M-series)
+Devices resolve automatically as cuda → **mps** → cpu (`HW_DEVICE` overrides).
+All vendored-model CUDA hardcodes are patched device-agnostic. On an 8 GB
+M-series machine run one engine hot at a time and enable the MPS op fallback:
+```bash
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+uvicorn app.main:app --port 8000
+```
 
 ### Docker
 ```bash

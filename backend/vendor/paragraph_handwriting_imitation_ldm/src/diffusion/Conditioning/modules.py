@@ -4,6 +4,17 @@
 """
 
 import torch
+
+# PLATFORM PATCH: default conditioning device follows availability
+# (cuda > mps > cpu) instead of hardcoded "cuda".
+def _default_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps"
+    return "cpu"
+
 import torch.nn as nn
 from functools import partial
 from einops import rearrange, repeat
@@ -40,9 +51,9 @@ class ClassEmbedder(nn.Module):
 
 class TransformerEmbedder(AbstractEncoder):
     """Some transformer encoder layers"""
-    def __init__(self, n_embed, n_layer, vocab_size, max_seq_len=77, device="cuda"):
+    def __init__(self, n_embed, n_layer, vocab_size, max_seq_len=77, device=None):
         super().__init__()
-        self.device = device
+        self.device = device or _default_device()
         self.transformer = TransformerWrapper(num_tokens=vocab_size, max_seq_len=max_seq_len,
                                               attn_layers=Encoder(dim=n_embed, depth=n_layer))
 
@@ -57,11 +68,11 @@ class TransformerEmbedder(AbstractEncoder):
 
 class BERTTokenizer(AbstractEncoder):
     """ Uses a pretrained BERT tokenizer by huggingface. Vocab size: 30522 (?)"""
-    def __init__(self, device="cuda", vq_interface=True, max_length=999):
+    def __init__(self, device=None, vq_interface=True, max_length=999):
         super().__init__()
         #self.tokenizer = BertTokenizerFast.from_pretrained("bert-base-uncased")
         self.tokenizer = BertTokenizerFast.from_pretrained(Parameters.bert_pretrained_path)
-        self.device = device
+        self.device = device or _default_device()
         self.vq_interface = vq_interface
         self.max_length = max_length
 
@@ -85,12 +96,12 @@ class BERTTokenizer(AbstractEncoder):
 class BERTEmbedder(AbstractEncoder):
     """Uses the BERT tokenizr model and add some transformer encoder layers"""
     def __init__(self, n_embed, n_layer, vocab_size=30522, max_seq_len=999,
-                 device="cuda",use_tokenizer=True, embedding_dropout=0.0):
+                 device=None,use_tokenizer=True, embedding_dropout=0.0):
         super().__init__()
         self.use_tknz_fn = use_tokenizer
         if self.use_tknz_fn:
             self.tknz_fn = BERTTokenizer(vq_interface=False, max_length=max_seq_len)
-        self.device = device
+        self.device = device or _default_device()
         self.transformer = TransformerWrapper(num_tokens=vocab_size, max_seq_len=max_seq_len,
                                               attn_layers=Encoder(dim=n_embed, depth=n_layer),
                                               emb_dropout=embedding_dropout)

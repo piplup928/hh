@@ -35,16 +35,42 @@ if [ ! -f "$WEIGHTS/hwd/VGG16_class_10400.pth" ]; then
 fi
 
 # --------------------------------------------------------------------- DiffInk
-if [ ! -f "$WEIGHTS/diffink/inkdit.pt" ]; then
-  cat <<'EOF'
->> DiffInk weights not found (expected: weights/diffink/inkvae.pt + inkdit.pt).
-   DiffInk (arXiv:2509.23624) has no public official checkpoint release.
-   Train the bundled faithful implementation on MathWriting / CROHME:
-     python -m app.engine.diffink.train --stage vae --data /path/to/mathwriting
-     python -m app.engine.diffink.train --stage dit --data /path/to/mathwriting
-   Until weights exist the math pipeline reports engine "unavailable" (it will
-   NEVER silently substitute fake output in benchmark runs).
+# OFFICIAL release: github.com/awei669/DiffInk (ICLR 2026). Weights + char
+# dict are distributed via the authors' Google Drive folder (see their README):
+#   https://drive.google.com/drive/folders/1h_uLmn-55WmbSBGh1ES8-rftAbDs8riB
+DIFFINK_FOLDER_ID="1h_uLmn-55WmbSBGh1ES8-rftAbDs8riB"
+OFFICIAL="$WEIGHTS/diffink/official"
+mkdir -p "$OFFICIAL"
+if [ ! -f "$OFFICIAL/dit.pt" ]; then
+  echo ">> Downloading official DiffInk release (Google Drive folder)..."
+  python -m gdown --folder "$DIFFINK_FOLDER_ID" -O "$OFFICIAL/_download" --remaining-ok || {
+    echo "!! gdown folder download failed. Download manually from the link above"
+    echo "   (or Baidu: https://pan.baidu.com/s/1NhEoO_hIDOn2dC4qN1oe1A?pwd=ddra)"
+  }
+  # normalize names: pick the newest vae_/dit_ checkpoints + the char dict
+  if [ -d "$OFFICIAL/_download" ]; then
+    find "$OFFICIAL/_download" -name 'vae*epoch*.pt'  | sort | tail -1 | xargs -I{} cp {} "$OFFICIAL/vae.pt" || true
+    find "$OFFICIAL/_download" -name 'dit*epoch*.pt'  | sort | tail -1 | xargs -I{} cp {} "$OFFICIAL/dit.pt" || true
+    find "$OFFICIAL/_download" -name 'All_zi.json'    | head -1 | xargs -I{} cp {} "$OFFICIAL/All_zi.json" || true
+  fi
+  if [ -f "$OFFICIAL/dit.pt" ] && [ -f "$OFFICIAL/vae.pt" ] && [ -f "$OFFICIAL/All_zi.json" ]; then
+    echo ">> Official DiffInk ready: $OFFICIAL/{vae.pt,dit.pt,All_zi.json}"
+  else
+    cat <<EOF
+!! Could not assemble $OFFICIAL/{vae.pt,dit.pt,All_zi.json} automatically.
+   Place them manually:
+     vae.pt      <- the authors' vae_epoch_*.pt   (InkVAE)
+     dit.pt      <- the authors' dit_epoch_*.pt   (InkDiT, fine-tuned)
+     All_zi.json <- the character dictionary from datas/meta/
 EOF
+  fi
+else
+  echo ">> Official DiffInk weights already present."
 fi
+
+# Optional: the platform also bundles a scratch InkVAE/InkDiT implementation
+# you can train yourself on MathWriting/CROHME for wider math-symbol coverage:
+#   python -m app.engine.diffink.train --stage vae --data /path/to/mathwriting
+#   python -m app.engine.diffink.train --stage dit --data /path/to/mathwriting
 
 echo ">> Done."

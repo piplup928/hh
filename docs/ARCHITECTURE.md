@@ -54,6 +54,29 @@ count, each word sprite is placed word-precisely (scaled by rect height,
 aspect preserved, width-capped); otherwise ink lines are stretched across the
 DOM line groups. Underlines are drawn as jittered pen strokes on canvas.
 
+## Official DiffInk integration (vendor/DiffInk)
+
+The official ICLR 2026 release is a prefix-infilling latent DiT: its style
+reference at inference is the VAE-encoded prefix of the trajectory being
+generated. `app/engine/diffink/official.py` generalizes this: with an online
+reference (`online_reference.json` in the style dir) the reference latents are
+locked as the prefix (`latent_mask=0`) — the paper's true conditioning; with
+image-only styles it generates text-conditioned and applies the analyzed pen
+model. Character ids come from the release's `All_zi.json` **key order**
+(embedding contract); unknown characters are skipped and reported. Sequence
+length uses a points-per-char heuristic since the original evaluator took it
+from ground truth.
+
+## Verified-plumbing methodology
+
+Model weights can't be downloaded in every environment, so both engines were
+verified end-to-end with **randomly initialized weights saved in the exact
+official checkpoint formats**: full 431M-param Paragraph-LDM (authors'
+`ours.yaml`) through conditioning → CFG DDIM → decode → ink extraction, and
+official DiffInk VAE(13.7M)+DiT(241.5M) through text encoding → ddim_sample →
+GMM decode → strokes, both text-only and prefix-reference modes. With real
+weight files in place, production exercises byte-identical code paths.
+
 ## Failure modes & honesty
 
 * Missing Paragraph-LDM checkpoint: `live` mode → HTTP 503 with setup

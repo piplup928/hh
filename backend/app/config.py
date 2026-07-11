@@ -40,19 +40,26 @@ LDM_CANVAS = 768
 # Empirically the released 768x768 model handles ~8-10 lines / ~42 chars per line.
 LDM_MAX_CHARS_PER_LINE = int(os.environ.get("HW_LDM_CHARS_PER_LINE", 42))
 LDM_MAX_LINES = int(os.environ.get("HW_LDM_MAX_LINES", 8))
+# DDIM step counts must divide the 1000 DDPM timesteps (vendor scheduler quirk)
 LDM_STEPS = int(os.environ.get("HW_LDM_STEPS", 50))          # DDIM steps (live typing)
-LDM_STEPS_FINAL = int(os.environ.get("HW_LDM_STEPS_FINAL", 150))  # export quality
+LDM_STEPS_FINAL = int(os.environ.get("HW_LDM_STEPS_FINAL", 125))  # export quality
 LDM_GUIDANCE = float(os.environ.get("HW_LDM_GUIDANCE", 2.5))
 
 # Generation cache
 CACHE_MAX_ITEMS = int(os.environ.get("HW_CACHE_MAX_ITEMS", 4096))
 
 def resolve_device() -> str:
+    """cuda > mps (Apple Silicon) > cpu, overridable with HW_DEVICE."""
     if DEVICE:
         return DEVICE
     try:
         import torch
 
-        return "cuda" if torch.cuda.is_available() else "cpu"
+        if torch.cuda.is_available():
+            return "cuda"
+        mps = getattr(torch.backends, "mps", None)
+        if mps is not None and mps.is_available():
+            return "mps"
+        return "cpu"
     except Exception:
         return "cpu"
