@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Model weights & artifacts (downloaded via scripts/setup_models.sh)
+backend/weights/
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+
+# Runtime data
+backend/data/
+backend/.cache/
+demo_images/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+.env
+.env.local

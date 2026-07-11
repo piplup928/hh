@@ -1,0 +1,36 @@
+# --- Core API ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.7
+websockets>=12.0
+aiofiles>=23.0
+
+# --- ML / generation stack ---
+# Torch: install the build matching your CUDA first if you need GPU, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.1
+torchvision>=0.16
+numpy>=1.24
+pillow>=10.0
+opencv-python-headless>=4.9
+einops>=0.7
+omegaconf>=2.3
+pytorch-lightning>=2.0
+scipy>=1.11
+scikit-image>=0.22
+
+# Paragraph-LDM vendor deps
+transformers>=4.38
+kornia>=0.7
+
+# --- Benchmarks (official HWD package is installed from backend/vendor/HWD) ---
+# pip install -e backend/vendor/HWD
+jiwer>=3.0
+
+# --- Utilities ---
+gdown>=5.1          # pre-trained Paragraph-LDM checkpoint download (Google Drive)
+requests>=2.31
+python-magic>=0.4 ; sys_platform != 'win32'
+svgwrite>=1.4
+shapely>=2.0
