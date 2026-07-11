@@ -27,6 +27,13 @@ kornia>=0.7
 # --- Benchmarks (official HWD package is installed from backend/vendor/HWD) ---
 # pip install -e backend/vendor/HWD
 jiwer>=3.0
+gudhi>=3.9          # required by hwd package import (GeometryScore)
+six>=1.16
+matplotlib>=3.8
+torchmetrics>=1.3
+scikit-learn>=1.4
+editdistance>=0.8
+tqdm>=4.66
 
 # --- Utilities ---
 gdown>=5.1          # pre-trained Paragraph-LDM checkpoint download (Google Drive)

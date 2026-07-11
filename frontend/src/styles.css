@@ -1,0 +1,118 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #e8e6df; }
+
+.app { display: flex; height: 100vh; }
+
+/* ------------------------------------------------------------- sidebar */
+.sidebar {
+  width: 290px; min-width: 290px; background: #23233a; color: #e8e8f0;
+  padding: 14px; overflow-y: auto;
+}
+.sidebar h2 { margin: 4px 0 14px; font-size: 19px; }
+.panel { background: #2d2d48; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.panel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #9f9fd0; }
+.panel .hint { font-size: 11.5px; color: #a5a5bd; margin: 0 0 10px; line-height: 1.4; }
+.panel label { display: block; font-size: 12px; margin: 8px 0 2px; color: #c9c9e0; }
+.panel input[type=range] { width: 100%; }
+.panel input[type=number] { width: 70px; margin-left: 6px; }
+.panel select { width: 100%; margin: 6px 0; padding: 5px; border-radius: 6px; border: none; }
+.panel .primary {
+  background: #6c63ff; border: none; color: white; padding: 8px 14px;
+  border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;
+}
+.panel .primary:disabled { opacity: 0.5; cursor: wait; }
+.panel .error { color: #ff8686; font-size: 11px; word-break: break-word; }
+.metrics { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.metrics span { background: #1c1c30; border-radius: 20px; padding: 3px 9px; font-size: 10.5px; color: #b8b8e8; }
+table.bench { width: 100%; font-size: 12px; margin-top: 10px; border-collapse: collapse; }
+table.bench td { padding: 4px 6px; border-bottom: 1px solid #3d3d5c; }
+table.bench .dir { color: #8888aa; font-size: 10px; }
+
+/* ------------------------------------------------------------ workspace */
+.workspace { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+  background: #fff; border-bottom: 1px solid #d8d5ca; align-items: center;
+}
+.tb-group { display: flex; gap: 2px; align-items: center; padding: 0 6px; border-right: 1px solid #eee; }
+.tb {
+  border: none; background: transparent; padding: 6px 9px; border-radius: 6px;
+  cursor: pointer; font-size: 14px; min-width: 32px;
+}
+.tb:hover { background: #f0eee6; }
+.tb.on { background: #6c63ff22; color: #4b44c9; font-weight: 700; }
+.tb-select { border: 1px solid #ddd; border-radius: 6px; padding: 4px; font-size: 12px; }
+.tb-mini { font-size: 14px; display: inline-flex; align-items: center; gap: 3px; }
+.tb-mini input[type=color] { width: 26px; height: 22px; border: none; padding: 0; cursor: pointer; }
+.tb-mini input[type=range] { width: 80px; }
+.ink-toggle.on { background: #23a55a22; color: #1d7a44; }
+
+/* ----------------------------------------------------------------- page */
+.page-scroll { flex: 1; overflow: auto; display: flex; justify-content: center; padding: 28px; }
+.page {
+  position: relative; box-shadow: 0 4px 24px rgba(30, 30, 60, 0.18);
+  border-radius: 3px;
+}
+.page.margin-line::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 64px;
+  width: 1.5px; background: rgba(235, 111, 111, 0.55); pointer-events: none;
+}
+.ink-canvas {
+  position: absolute; inset: 0; pointer-events: none; z-index: 3;
+}
+
+/* ProseMirror content: invisible glyphs, visible caret — ink is drawn above */
+.page .ProseMirror {
+  outline: none; min-height: 400px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: calc(17px * var(--hw-font-scale, 1));
+  line-height: var(--hw-line-height, 1.8);
+  letter-spacing: var(--hw-letter-spacing, 0);
+  word-spacing: var(--hw-word-spacing, 0);
+  caret-color: #16163a;
+}
+.page.ink-on .ProseMirror { color: transparent; }
+.page.ink-on .ProseMirror ::selection { background: rgba(108, 99, 255, 0.25); }
+.page:not(.ink-on) .ProseMirror { color: #1c1c38; }
+.ProseMirror p { margin: 0 0 var(--hw-para-spacing, 12px); }
+.ProseMirror h1, .ProseMirror h2, .ProseMirror h3 { margin: 0.4em 0; }
+.ProseMirror h1 { font-size: 1.7em; } .ProseMirror h2 { font-size: 1.45em; } .ProseMirror h3 { font-size: 1.25em; }
+
+/* highlights stay visible even with transparent glyphs */
+.page.ink-on .ProseMirror mark { color: transparent; border-radius: 3px; }
+
+/* lists: keep markers visible (pen-like color) */
+.page.ink-on .ProseMirror li::marker { color: #2c2c50; }
+
+/* tables */
+.ProseMirror table { border-collapse: collapse; width: 100%; margin: 10px 0; table-layout: fixed; }
+.ProseMirror td, .ProseMirror th {
+  border: 1px solid #9a97b8; padding: 6px 8px; vertical-align: top;
+  min-width: 40px; position: relative;
+}
+.ProseMirror .column-resize-handle {
+  position: absolute; right: -2px; top: 0; bottom: 0; width: 4px;
+  background: #6c63ff; opacity: 0.7; cursor: col-resize;
+}
+.ProseMirror .selectedCell::after {
+  content: ''; position: absolute; inset: 0; background: rgba(108, 99, 255, 0.12);
+  pointer-events: none;
+}
+
+/* images */
+.hand-image-wrapper { position: relative; display: inline-block; max-width: 100%; }
+.hand-image-wrapper img { max-width: 100%; display: block; }
+.hand-image-resize {
+  position: absolute; right: -6px; bottom: -6px; width: 14px; height: 14px;
+  background: #6c63ff; border: 2px solid white; border-radius: 50%;
+  cursor: nwse-resize; opacity: 0; transition: opacity 0.15s;
+}
+.hand-image-wrapper:hover .hand-image-resize { opacity: 1; }
+
+/* -------------------------------------------------------------- printing */
+@media print {
+  .sidebar, .toolbar { display: none !important; }
+  .page-scroll { padding: 0; overflow: visible; }
+  .page { box-shadow: none; }
+  body { background: white; }
+}

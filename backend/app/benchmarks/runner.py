@@ -179,14 +179,16 @@ class BenchmarkRunner:
         }
 
         user_fakes = FolderDataset(str(fake_root))
-        user_reals_only = FolderDataset(str(real_root / user).rsplit("/", 1)[0])
+        # HWD & distribution metrics compare against the USER's real lines only;
+        # the full gallery (user + IAM distractor writers) is used exclusively
+        # for retrieval mAP.
+        user_reals = FolderDataset(str(real_root / user))
 
         if "hwd" in metrics:
             from hwd.scores import HWDScore
 
             hwd = HWDScore(height=32)
-            # HWD compares fake vs the user's real lines only
-            score = hwd(user_fakes, FolderDataset(str(real_root)))
+            score = hwd(user_fakes, user_reals)
             report["metrics"]["hwd"] = {
                 "value": float(score),
                 "direction": "lower_is_better",
@@ -217,8 +219,7 @@ class BenchmarkRunner:
             if name in metrics:
                 import hwd.scores as S
 
-                score = getattr(S, cls_name)(height=32)(
-                    user_fakes, FolderDataset(str(real_root)))
+                score = getattr(S, cls_name)(height=32)(user_fakes, user_reals)
                 report["metrics"][name] = {
                     "value": float(score), "direction": "lower_is_better"}
 

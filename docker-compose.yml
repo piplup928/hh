@@ -1,0 +1,30 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - HW_ENGINE_MODE=${HW_ENGINE_MODE:-preview}
+    volumes:
+      - ./backend/weights:/app/weights
+      - hw-data:/app/data
+    # GPU passthrough for live diffusion (requires nvidia-container-toolkit):
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  hw-data:
