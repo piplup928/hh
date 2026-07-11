@@ -95,21 +95,37 @@ docs/ARCHITECTURE.md
 
 ## Quickstart
 
+> **Zsh users (default on macOS):** run each command on its own line, or
+> paste blocks exactly as shown with no trailing text after a command.
+> Interactive zsh does not treat `#` as a comment by default, so a pasted
+> line like `foo # some note (~500MB)` gets parsed as shell input, not a
+> comment, and can fail with confusing errors (e.g. `unknown file attribute: ~`).
+> The commands below are comment-free for this reason.
+
+First, `cd` into the directory where you cloned/downloaded this repo (the
+folder containing `backend/` and `frontend/`) — not your home directory.
+
 ### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
-pip install -e vendor/HWD                # official HWD metric package
-bash scripts/setup_models.sh             # downloads Paragraph-LDM checkpoint (GPU: ≥8GB VRAM)
+pip install -e vendor/HWD
+bash scripts/setup_models.sh
 uvicorn app.main:app --port 8000
 ```
+`pip install -e vendor/HWD` installs the official HWD metric package.
+`scripts/setup_models.sh` downloads the Paragraph-LDM and DiffInk checkpoints
+(several GB total; a CUDA GPU with ≥8GB VRAM or Apple Silicon is recommended
+for live generation — see below).
 
 ### Frontend
 ```bash
 cd frontend
 npm install
-npm run dev                              # http://localhost:5173
+npm run dev
 ```
+Opens at http://localhost:5173 (the backend must already be running on
+:8000 — see `frontend/.env` / `VITE_API_BASE` to point elsewhere).
 
 ### Engine modes
 * `HW_ENGINE_MODE=live` — only real model output; requests fail loudly if
@@ -140,8 +156,9 @@ uvicorn app.main:app --port 8000
 
 ### Docker
 ```bash
-docker compose up --build     # backend :8000 (GPU passthrough), frontend :5173
+docker compose up --build
 ```
+Starts the backend on :8000 (with GPU passthrough) and the frontend on :5173.
 
 ## Editor features
 
@@ -159,5 +176,6 @@ grid size controls. Print/PDF export via the print stylesheet.
 ## Tests
 
 ```bash
-cd backend && python -m pytest tests/   # 21 tests
+cd backend
+python -m pytest tests/
 ```
