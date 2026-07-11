@@ -22,8 +22,20 @@ else
   exit 1
 fi
 if ! "$PY" -c "import gdown" >/dev/null 2>&1; then
-  echo ">> Installing gdown ($PY -m pip install --user gdown)..."
-  "$PY" -m pip install --user gdown
+  echo ">> Installing gdown..."
+  if ! "$PY" -m pip install gdown; then
+    cat <<'EOF'
+!! pip refused to install gdown ("externally-managed-environment").
+   This means you're using your system/Homebrew Python directly. Create and
+   activate a virtual environment first, then re-run this script:
+
+     python3 -m venv .venv
+     source .venv/bin/activate
+     pip install -r requirements.txt
+     bash scripts/setup_models.sh
+EOF
+    exit 1
+  fi
 fi
 
 # ---------------------------------------------------------------- Paragraph-LDM

@@ -108,11 +108,18 @@ folder containing `backend/` and `frontend/`) — not your home directory.
 ### Backend
 ```bash
 cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e vendor/HWD
 bash scripts/setup_models.sh
 uvicorn app.main:app --port 8000
 ```
+The virtual environment is required on macOS/Homebrew Python (and recommended
+everywhere) — without it, `pip install` refuses system-wide installs
+("externally-managed-environment"). Remember to `source .venv/bin/activate`
+again in any new terminal tab before running backend commands.
+
 `pip install -e vendor/HWD` installs the official HWD metric package.
 `scripts/setup_models.sh` downloads the Paragraph-LDM and DiffInk checkpoints
 (several GB total; a CUDA GPU with ≥8GB VRAM or Apple Silicon is recommended
@@ -150,6 +157,7 @@ Devices resolve automatically as cuda → **mps** → cpu (`HW_DEVICE` overrides
 All vendored-model CUDA hardcodes are patched device-agnostic. On an 8 GB
 M-series machine run one engine hot at a time and enable the MPS op fallback:
 ```bash
+source .venv/bin/activate
 export PYTORCH_ENABLE_MPS_FALLBACK=1
 uvicorn app.main:app --port 8000
 ```
