@@ -70,7 +70,17 @@ OFFICIAL="$WEIGHTS/diffink/official"
 mkdir -p "$OFFICIAL"
 if [ ! -f "$OFFICIAL/dit.pt" ]; then
   echo ">> Downloading official DiffInk release (Google Drive folder)..."
-  "$PY" -m gdown --folder "$DIFFINK_FOLDER_ID" -O "$OFFICIAL/_download" --remaining-ok || {
+  # download_folder()'s signature (and whether 'remaining_ok' even exists)
+  # varies across gdown versions, so pass it only when supported.
+  "$PY" -c "
+import gdown, inspect
+kwargs = dict(id='$DIFFINK_FOLDER_ID', output='$OFFICIAL/_download', quiet=False)
+if 'remaining_ok' in inspect.signature(gdown.download_folder).parameters:
+    kwargs['remaining_ok'] = True
+if 'use_cookies' in inspect.signature(gdown.download_folder).parameters:
+    kwargs['use_cookies'] = False
+gdown.download_folder(**kwargs)
+" || {
     echo "!! gdown folder download failed. Download manually from the link above"
     echo "   (or Baidu: https://pan.baidu.com/s/1NhEoO_hIDOn2dC4qN1oe1A?pwd=ddra)"
   }
