@@ -105,8 +105,10 @@ class DiffInkEngine:
             try:
                 import torch
 
-                vae_sd = torch.load(str(self.vae_ckpt), map_location="cpu")
-                dit_sd = torch.load(str(self.dit_ckpt), map_location="cpu")
+                vae_sd = torch.load(str(self.vae_ckpt), map_location="cpu",
+                                    weights_only=False)
+                dit_sd = torch.load(str(self.dit_ckpt), map_location="cpu",
+                                    weights_only=False)
                 vae = InkVAE(**vae_sd.get("hparams", {}))
                 vae.load_state_dict(vae_sd["state_dict"])
                 dit = InkDiT(**dit_sd.get("hparams", {}))

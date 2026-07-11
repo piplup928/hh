@@ -4,6 +4,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Apple Silicon: let unsupported MPS ops fall back to CPU instead of crashing.
+# Must be set before torch initializes; harmless elsewhere.
+os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
+
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 VENDOR_DIR = BACKEND_ROOT / "vendor"
 PARAGRAPH_LDM_DIR = VENDOR_DIR / "paragraph_handwriting_imitation_ldm"

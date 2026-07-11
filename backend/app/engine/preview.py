@@ -62,18 +62,25 @@ class PreviewEngine:
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         boxes: List[LineBox] = []
+        space_w = draw.textlength("  ", font=font) - draw.textlength(" ", font=font) or size * 0.3
         for i, ln in enumerate(lines):
             y = 8 + i * line_h + int(rng.normal(0, (m.baseline_drift_px if m else 1.5) * 0.6))
             draw.text((16, y), ln, font=font, fill=(0, 0, 0, 235))
+            # actual pixel extents of the drawn text: getbbox()[1] is the top
+            # bearing, so glyphs span y+top .. y+bottom — box from y with
+            # height bottom-top cropped descenders (the "half words" bug)
             bb = font.getbbox(ln or " ")
-            lb = LineBox(text=ln, x=16, y=y, w=bb[2], h=bb[3] - bb[1],
+            gy, gh = y + bb[1], max(bb[3] - bb[1], 1)
+            lb = LineBox(text=ln, x=16, y=gy, w=bb[2], h=gh,
                          baseline=y + int(size * 0.85))
-            x = 16
+            x = 16.0
             for wtext in ln.split():
-                ww = font.getbbox(wtext)[2]
-                lb.words.append(WordBox(text=wtext, x=x, y=y, w=ww,
-                                        h=bb[3] - bb[1], baseline=lb.baseline))
-                x += ww + font.getbbox(" ")[2]
+                wb = font.getbbox(wtext)
+                lb.words.append(WordBox(
+                    text=wtext, x=int(x + wb[0]), y=y + wb[1],
+                    w=max(wb[2] - wb[0], 1), h=max(wb[3] - wb[1], 1),
+                    baseline=lb.baseline))
+                x += draw.textlength(wtext, font=font) + space_w
             boxes.append(lb)
 
         if m and abs(m.slant_deg) > 2:  # rough slant hint so preview ~ tracks style

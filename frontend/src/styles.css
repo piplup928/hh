@@ -122,3 +122,8 @@ table.bench .dir { color: #8888aa; font-size: 10px; }
 .doc-actions { display: flex; gap: 6px; margin-bottom: 6px; }
 .doc-actions button { flex: 1; padding: 6px; border: none; border-radius: 6px; cursor: pointer; background: #44446b; color: #e8e8f0; }
 .doc-actions button.primary { background: #6c63ff; font-weight: 600; }
+
+/* engine status */
+.engine-badge { font-size: 11px; border-radius: 6px; padding: 5px 8px; margin-bottom: 5px; word-break: break-word; }
+.engine-badge.ok { background: #1d4d3122; color: #7fd8a5; border: 1px solid #2a6a45; }
+.engine-badge.bad { background: #5c1d1d33; color: #ff9d9d; border: 1px solid #7a2e2e; }

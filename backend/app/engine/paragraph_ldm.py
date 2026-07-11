@@ -119,7 +119,12 @@ class ParagraphLDMEngine:
                 finally:
                     os.chdir(cwd)
 
-                sd = torch.load(str(self.ckpt_path), map_location="cpu")
+                # weights_only=False: PyTorch >=2.6 defaults to True, which
+                # cannot read the authors' legacy .tar-format checkpoint. The
+                # file comes from the paper authors' official release (trusted
+                # source, see scripts/setup_models.sh).
+                sd = torch.load(str(self.ckpt_path), map_location="cpu",
+                                weights_only=False)
                 state = sd.get("state_dict", sd)
                 missing, unexpected = model.load_state_dict(state, strict=False)
                 if missing:

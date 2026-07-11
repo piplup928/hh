@@ -3,6 +3,44 @@ import { api } from '../api';
 import { DEFAULT_PAPER, PAPER_PRESETS } from '../paper';
 import type { BenchmarkReport, PaperSettings, StyleProfile, Typography } from '../types';
 
+// ------------------------------------------------------------- Engine status
+interface EngineInfo {
+  loaded?: boolean; checkpointPresent?: boolean; error?: string | null;
+  device?: string;
+}
+
+export function EngineStatusPanel() {
+  const [status, setStatus] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    const poll = () => api.engineStatus().then(setStatus).catch(() => setStatus(null));
+    poll();
+    const t = setInterval(poll, 15000);
+    return () => clearInterval(t);
+  }, []);
+  if (!status) return null;
+
+  const badge = (name: string, e: EngineInfo | undefined) => {
+    const ready = !!(e && (e.loaded || e.checkpointPresent) && !e.error);
+    return (
+      <div className={`engine-badge ${ready ? 'ok' : 'bad'}`} key={name}>
+        <b>{name}</b> {ready ? (e?.loaded ? `live · ${e.device ?? ''}` : 'weights ready')
+          : (e?.error ? `FAILED: ${String(e.error).slice(0, 90)}`
+            : 'weights missing — using PREVIEW font')}
+      </div>
+    );
+  };
+  return (
+    <section className="panel">
+      <h3>Engines</h3>
+      {badge('Paragraph-LDM', status.paragraphLdm as EngineInfo)}
+      {badge('DiffInk', status.diffink as EngineInfo)}
+      <p className="hint">If an engine shows PREVIEW/FAILED, generated ink is a
+        placeholder font — it will NOT match your handwriting until the real
+        model loads (check backend logs).</p>
+    </section>
+  );
+}
+
 // ------------------------------------------------------------------- Styles
 export function StylePanel({ styleId, setStyleId }: {
   styleId: string | null; setStyleId: (s: string | null) => void;

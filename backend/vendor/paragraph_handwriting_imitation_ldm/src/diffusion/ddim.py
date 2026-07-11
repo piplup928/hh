@@ -22,8 +22,12 @@ class DDIMSampler(object):
         self.schedule = schedule
 
     def register_buffer(self, name, attr):
-        # PLATFORM PATCH: device-agnostic (cuda/mps/cpu) instead of hardcoded cuda
+        # PLATFORM PATCH: device-agnostic (cuda/mps/cpu) instead of hardcoded
+        # cuda, and float64 schedule tensors are cast to float32 because the
+        # MPS backend has no float64 support.
         if type(attr) == torch.Tensor:
+            if attr.dtype == torch.float64:
+                attr = attr.to(torch.float32)
             model_device = next(self.model.parameters()).device
             if attr.device != model_device:
                 attr = attr.to(model_device)

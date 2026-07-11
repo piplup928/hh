@@ -119,7 +119,11 @@ class OfficialDiffInk:
                 config = ModelConfig(cfg)
 
                 def _load(path):
-                    ckpt = torch.load(str(path), map_location="cpu")
+                    # weights_only=False: authors' official release checkpoints
+                    # (trusted source); older save formats fail under the
+                    # PyTorch >=2.6 weights_only=True default.
+                    ckpt = torch.load(str(path), map_location="cpu",
+                                      weights_only=False)
                     sd = ckpt.get("model_state_dict", ckpt)
                     if any(k.startswith("module.") for k in sd):
                         sd = {k[len("module."):]: v for k, v in sd.items()}
