@@ -119,12 +119,7 @@ class ParagraphLDMEngine:
                 finally:
                     os.chdir(cwd)
 
-                # weights_only=False: PyTorch >=2.6 defaults to True, which
-                # cannot read the authors' legacy .tar-format checkpoint. The
-                # file comes from the paper authors' official release (trusted
-                # source, see scripts/setup_models.sh).
-                sd = torch.load(str(self.ckpt_path), map_location="cpu",
-                                weights_only=False)
+                sd = self._load_checkpoint_file(torch)
                 state = sd.get("state_dict", sd)
                 missing, unexpected = model.load_state_dict(state, strict=False)
                 if missing:
@@ -142,6 +137,91 @@ class ParagraphLDMEngine:
                 self._load_error = f"{type(e).__name__}: {e}"
                 log.exception("Paragraph-LDM load failed")
                 raise EngineUnavailable(self._load_error) from e
+
+    # ------------------------------------------------------------- ckpt loading
+    def _load_checkpoint_file(self, torch):
+        """Load the official checkpoint, tolerating packaging differences.
+
+        The Drive release has shipped in several shapes over time: a raw
+        torch checkpoint, or a tar/zip ARCHIVE containing the .ckpt file.
+        A wrapping archive surfaces as torch.load failing with e.g.
+        KeyError: "filename 'storages' not found" (valid tar, but not the
+        ancient torch tar format). We detect that, extract the inner
+        checkpoint next to the original (cached for future startups), and
+        load it. weights_only=False everywhere: trusted authors' release.
+        """
+        import tarfile
+        import zipfile
+
+        extracted = self.ckpt_path.with_name(self.ckpt_path.stem + "_extracted.ckpt")
+        if extracted.exists():
+            log.info("loading previously extracted checkpoint %s", extracted)
+            return torch.load(str(extracted), map_location="cpu", weights_only=False)
+
+        try:
+            return torch.load(str(self.ckpt_path), map_location="cpu",
+                              weights_only=False)
+        except Exception as first_err:  # noqa: BLE001
+            log.warning("direct torch.load failed (%s); checking whether the "
+                        "file is an archive wrapping the checkpoint",
+                        first_err)
+
+        def pick(names):
+            """Choose the most checkpoint-looking member name."""
+            cands = [n for n in names
+                     if n.lower().endswith((".ckpt", ".pt", ".pth", ".bin"))]
+            if not cands:
+                cands = list(names)
+            for hint in ("ldm", "last", "diffusion", "epoch"):
+                hinted = [n for n in cands if hint in n.lower()]
+                if hinted:
+                    cands = hinted
+                    break
+            return cands
+
+        path = str(self.ckpt_path)
+        if tarfile.is_tarfile(path):
+            with tarfile.open(path) as tf:
+                members = {m.name: m for m in tf.getmembers() if m.isfile()}
+                if not members:
+                    raise RuntimeError("checkpoint tar archive is empty")
+                names = pick(members.keys())
+                best = max(names, key=lambda n: members[n].size)
+                log.info("extracting %r (%.0f MB) from checkpoint tar (members: %s)",
+                         best, members[best].size / 2**20, sorted(members)[:8])
+                with tf.extractfile(members[best]) as src, open(extracted, "wb") as dst:
+                    while True:
+                        chunk = src.read(1 << 24)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+            return torch.load(str(extracted), map_location="cpu", weights_only=False)
+
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path) as zf:
+                infos = {i.filename: i for i in zf.infolist() if not i.is_dir()}
+                # a real torch>=1.6 checkpoint is itself a zip containing
+                # data.pkl — that case loads directly above, so reaching here
+                # means it's a wrapper zip
+                names = pick(infos.keys())
+                best = max(names, key=lambda n: infos[n].file_size)
+                log.info("extracting %r (%.0f MB) from checkpoint zip",
+                         best, infos[best].file_size / 2**20)
+                with zf.open(infos[best]) as src, open(extracted, "wb") as dst:
+                    while True:
+                        chunk = src.read(1 << 24)
+                        if not chunk:
+                            break
+                        dst.write(chunk)
+            return torch.load(str(extracted), map_location="cpu", weights_only=False)
+
+        # neither loadable nor an archive: probably a corrupt/HTML download
+        head = open(path, "rb").read(256)
+        raise RuntimeError(
+            f"{self.ckpt_path} is not a torch checkpoint nor a tar/zip archive "
+            f"(first bytes: {head[:60]!r}). The Google Drive download likely "
+            "failed (quota/HTML page) — delete the file and re-run "
+            "scripts/setup_models.sh")
 
     # ------------------------------------------------------------ conditioning
     def _subsequent_mask(self, size: int):
