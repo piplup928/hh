@@ -42,3 +42,14 @@ app.include_router(benchmarks.router)
 @app.get("/api/health")
 async def health():
     return {"ok": True, "mode": ENGINE_MODE, "engines": service.status()}
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return {
+        "service": "Handwriting Intelligence Platform — backend API",
+        "hint": "This port serves the API only. Open the editor UI at "
+                "http://localhost:5173 (run `npm run dev` in frontend/).",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
