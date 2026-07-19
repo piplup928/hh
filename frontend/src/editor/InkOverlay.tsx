@@ -18,23 +18,36 @@ import { GenSocket } from '../api';
 import type { InkPayload, Marks, Typography } from '../types';
 
 interface RunInfo {
-  key: string;
+  key: string;      // content-addressed cache key (text + marks signature)
+  posKey: string;   // positional identity (block/run/group) for stale reuse
   text: string;
   marks: Marks;
   underline: boolean;
   tokens: { text: string; from: number; to: number }[];
 }
 
+// Words per generation group. Typing only invalidates the group being edited;
+// completed groups keep their cached ink — essential when one diffusion call
+// takes minutes on laptop hardware.
+const GROUP_WORDS = 6;
+
 interface Sprite { img: HTMLImageElement; payloads: InkPayload[] }
 
 const markSig = (m: Marks) => JSON.stringify([!!m.bold, !!m.italic, m.color ?? '', m.sizeFactor ?? 1]);
 
 function collectRuns(editor: Editor, fontScale: number): RunInfo[] {
-  const runs: RunInfo[] = [];
+  interface RawRun {
+    sig: string; marks: Marks; underline: boolean;
+    tokens: { text: string; from: number; to: number }[];
+  }
+  const raw: RawRun[] = [];
   const doc = editor.state.doc;
+  let blockIdx = -1;
+  const blockOf: number[] = []; // raw run index -> block index
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true;
-    let cur: RunInfo | null = null;
+    blockIdx += 1;
+    let cur: RawRun | null = null;
     node.forEach((child, offset) => {
       if (!child.isText || !child.text) { cur = null; return; }
       const from = pos + 1 + offset;
@@ -53,24 +66,34 @@ function collectRuns(editor: Editor, fontScale: number): RunInfo[] {
         marks.bold = true;
       }
       const sig = markSig(marks) + (underline ? 'u' : '');
-      if (!cur || cur.key.split('||')[1] !== sig) {
-        cur = { key: '', text: '', marks, underline, tokens: [] };
-        runs.push(cur);
-        cur.key = `||${sig}`;
+      if (!cur || cur.sig !== sig) {
+        cur = { sig, marks, underline, tokens: [] };
+        raw.push(cur);
+        blockOf.push(blockIdx);
       }
-      // tokenize with positions
       const re = /\S+/g;
       let m2: RegExpExecArray | null;
       while ((m2 = re.exec(child.text)) !== null) {
         cur.tokens.push({ text: m2[0], from: from + m2.index, to: from + m2.index + m2[0].length });
       }
-      cur.text = cur.text ? `${cur.text} ${child.text.trim()}` : child.text.trim();
     });
     return true;
   });
-  return runs
-    .filter((r) => r.tokens.length > 0)
-    .map((r) => ({ ...r, key: `${r.text}${r.key}` }));
+
+  // split every styled run into fixed word groups
+  const groups: RunInfo[] = [];
+  raw.forEach((r, ri) => {
+    for (let g = 0; g * GROUP_WORDS < r.tokens.length; g++) {
+      const tokens = r.tokens.slice(g * GROUP_WORDS, (g + 1) * GROUP_WORDS);
+      const text = tokens.map((t) => t.text).join(' ');
+      groups.push({
+        key: `${text}||${r.sig}`,
+        posKey: `${blockOf[ri]}:${ri}:${g}:${r.sig}`,
+        text, marks: r.marks, underline: r.underline, tokens,
+      });
+    }
+  });
+  return groups;
 }
 
 function tokenRect(editor: Editor, from: number, to: number, origin: DOMRect) {
@@ -95,12 +118,15 @@ export function useInkOverlay(
   inkEnabled: boolean,
 ) {
   const sprites = useRef(new Map<string, Sprite>());
+  const staleByPos = useRef(new Map<string, Sprite>()); // last good ink per position
+  const keyFirstSeen = useRef(new Map<string, number>());
   const pending = useRef(new Set<string>());
   const keyByReq = useRef(new Map<number, string>());
   const reqCounter = useRef(1);
   const socket = useRef<GenSocket | null>(null);
   const raf = useRef(0);
   const debounce = useRef(0);
+  const stableTimer = useRef(0);
 
   // stable refs for the draw closure
   const stateRef = useRef({ editor, styleId, typography, inkEnabled });
@@ -136,16 +162,40 @@ export function useInkOverlay(
     raf.current = requestAnimationFrame(draw);
   };
 
+  // A group is only sent to the model once its text has been STABLE for a
+  // moment (the user moved on). Prevents every keystroke from queueing a
+  // multi-minute diffusion run for a half-typed word.
+  const STABLE_MS = 900;
+
   const requestMissing = (runs: RunInfo[]) => {
     const { styleId: sid } = stateRef.current;
     if (!sid) return;
+    const now = Date.now();
+    let needsRecheck = false;
+    const liveKeys = new Set<string>();
     for (const run of runs) {
       const key = `${sid}:${run.key}`;
+      liveKeys.add(key);
       if (sprites.current.has(key) || pending.current.has(key)) continue;
+      const seen = keyFirstSeen.current.get(key);
+      if (seen === undefined) {
+        keyFirstSeen.current.set(key, now);
+        needsRecheck = true;
+        continue;
+      }
+      if (now - seen < STABLE_MS) { needsRecheck = true; continue; }
       pending.current.add(key);
       const reqId = reqCounter.current++;
       keyByReq.current.set(reqId, key);
       socket.current?.request(reqId, run.text, sid, run.marks);
+    }
+    // drop timestamps of keys no longer in the doc (typing churn)
+    for (const k of keyFirstSeen.current.keys()) {
+      if (!liveKeys.has(k)) keyFirstSeen.current.delete(k);
+    }
+    if (needsRecheck) {
+      clearTimeout(stableTimer.current);
+      stableTimer.current = window.setTimeout(scheduleDraw, STABLE_MS + 50);
     }
   };
 
@@ -176,8 +226,22 @@ export function useInkOverlay(
     for (const run of runs) {
       const key = `${sid}:${run.key}`;
       const sprite = sprites.current.get(key);
-      if (!sprite) { drawPlaceholder(ctx, ed, run, rect); continue; }
-      drawRun(ctx, ed, run, sprite.payloads, rect);
+      if (sprite) {
+        drawRun(ctx, ed, run, sprite.payloads, rect);
+        staleByPos.current.set(`${sid}:${run.posKey}`, sprite);
+        continue;
+      }
+      // fresh ink still generating: keep showing the previous ink for this
+      // position (slightly faded) instead of dropping back to placeholders
+      const stale = staleByPos.current.get(`${sid}:${run.posKey}`);
+      if (stale) {
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        drawRun(ctx, ed, run, stale.payloads, rect);
+        ctx.restore();
+      } else {
+        drawPlaceholder(ctx, ed, run, rect);
+      }
     }
   };
 

@@ -35,6 +35,10 @@ class GenerationService:
         self.diffink = diffink_engine
         self.preview = preview_engine
         self.styles = style_store
+        # in-flight de-dup: identical concurrent requests (editor redraws,
+        # multiple ws connections) share one diffusion run
+        self._inflight: dict = {}
+        self._inflight_lock = __import__("threading").Lock()
 
     # ------------------------------------------------------------------ status
     def status(self) -> dict:
@@ -61,13 +65,36 @@ class GenerationService:
     def generate_run_sync(self, run: Run, style_id: str, *,
                           seed: Optional[int] = None, quality: str = "live",
                           marks: Optional[dict] = None) -> InkResult:
+        import threading
+
         content = latex_normalize(run.content) if run.kind == "math" else run.content
         engine = self._pick(run.kind)
         base_key = make_key(engine.name, style_id, content, seed, quality, None)
         result = cache.get(base_key)
         if result is None:
-            result = engine.generate(content, style_id, seed=seed, quality=quality)
-            cache.put(base_key, result)
+            with self._inflight_lock:
+                ev = self._inflight.get(base_key)
+                owner = ev is None
+                if owner:
+                    ev = threading.Event()
+                    self._inflight[base_key] = ev
+            if owner:
+                try:
+                    result = engine.generate(content, style_id, seed=seed,
+                                             quality=quality)
+                    cache.put(base_key, result)
+                finally:
+                    with self._inflight_lock:
+                        self._inflight.pop(base_key, None)
+                    ev.set()
+            else:
+                # another worker is generating this exact content — wait for it
+                ev.wait(timeout=1800)
+                result = cache.get(base_key)
+                if result is None:
+                    result = engine.generate(content, style_id, seed=seed,
+                                             quality=quality)
+                    cache.put(base_key, result)
         if marks:
             marked_key = make_key(engine.name, style_id, content, seed, quality, marks)
             marked = cache.get(marked_key)

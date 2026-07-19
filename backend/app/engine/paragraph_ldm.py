@@ -27,6 +27,7 @@ import logging
 import os
 import sys
 import threading
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -388,7 +389,14 @@ class ParagraphLDMEngine:
         lines = wrap_paragraph(text, LDM_MAX_CHARS_PER_LINE, LDM_MAX_LINES)
         cond_text = "\n".join(lines)
         steps = LDM_STEPS if quality == "live" else LDM_STEPS_FINAL
+        # without CUDA, 50-step sampling takes minutes; default live typing to
+        # 20 steps (still CFG-guided) unless the user pinned HW_LDM_STEPS
+        if quality == "live" and self.device != "cuda" and "HW_LDM_STEPS" not in os.environ:
+            steps = 20
+        t0 = time.time()
         page = self._sample_page(cond_text, style_img, steps, LDM_GUIDANCE, seed)
+        log.info("generated %r (%d chars) in %.1fs — steps=%d device=%s",
+                 text[:40], len(text), time.time() - t0, steps, self.device)
         layout = self.extract_layout(page, lines)
         ink = self.page_to_ink(page)
         x_h = profile.metrics.x_height_px
